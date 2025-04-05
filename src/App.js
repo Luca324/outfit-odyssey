@@ -1,8 +1,91 @@
+/* global gapi */
 import logo from './img/Outfit_Odyssey.webp';
 import outfitExample from './img/outfit-example.png'
 import './styles/App.css';
+import React, { useEffect, useState } from 'react';
 
 function App() {
+  const [images, setImages] = useState([]); // Состояние для хранения результатов поиска
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://apis.google.com/js/api.js";
+    script.onload = () => {
+      // Проверка доступности gapi
+
+      if (typeof gapi !== 'undefined') {
+        gapi.load('client', () => {
+          console.log('GAPI loaded');
+          loadClient();
+        });
+      } else {
+        console.error('GAPI not loaded after script load.');
+      }
+    };
+    script.onerror = () => {
+      console.error('Failed to load Google API script.');
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  function loadClient() {
+    if (typeof gapi !== 'undefined') { // Дополнительная проверка перед использованием gapi
+      gapi.client.setApiKey("AIzaSyCYIu0bX9jfTkWbPpv1KH37vMCHaasw5-A");
+      gapi.client.load("https://content.googleapis.com/discovery/v1/apis/customsearch/v1/rest")
+        .then(function () {
+          console.log("GAPI client loaded for API");
+        },
+          function (err) {
+            console.error("Error loading GAPI client for API", err);
+          });
+    } else {
+      console.error('GAPI not loaded.');
+    }
+  }
+
+  function execute() {
+    if (typeof gapi !== 'undefined') { // Дополнительная проверка перед использованием gapi
+      gapi.client.search.cse.list({
+        "cx": "b62a35661c1294a02", // Замените "YOUR_CSE_ID" своим Custom Search Engine ID
+        "q": "japan outfit style",
+        "searchType": "image"
+      })
+        .then(function (response) {
+          console.log("Response", response);
+          // Обработлька резутатов поиска
+          if (response.result && response.result.items) {
+            console.log('rendering results...')
+            for (var i = 1; i < response.items.length; i++) {
+              var item = response.items[i];
+              // Make sure HTML in item.htmlTitle is escaped.
+              // console.log('i', i)
+              document.getElementById("content").append(
+                document.createElement("br"),
+                document.createTextNode(item.title),
+                (() => { 
+                  const img = document.createElement("img");
+                  img.src = item.link;
+                  return img;
+                })()
+              );
+
+            }
+          } else if (response.items == null) {
+            document.getElementById("demo").innerHTML += `<h3> No Results Found </h3>`;
+          } 
+        },
+          function (err) {
+            console.error("Execute error", err);
+          });
+    } else {
+      console.error('GAPI not loaded.');
+    }
+  }
+
   return (
     <>
       <header>
@@ -32,6 +115,12 @@ function App() {
         </div>
       </header>
       <main>
+        <div>
+          <button onClick={loadClient}>Load Client</button>
+          <button onClick={execute}>Execute Search</button>
+        </div>
+        <div id="content"></div>
+
         <section className="hero">
           <div className="container hero-content">
             <h2>DISCOVER YOUR STYLE JOURNEY</h2>
