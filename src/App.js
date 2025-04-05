@@ -5,87 +5,71 @@ import './styles/App.css';
 import React, { useEffect, useState } from 'react';
 
 function App() {
-  const [images, setImages] = useState([]); // Состояние для хранения результатов поиска
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isGapiReady, setIsGapiReady] = useState(false);
 
+  // Инициализация gapi
   useEffect(() => {
     const script = document.createElement('script');
     script.src = "https://apis.google.com/js/api.js";
+    
     script.onload = () => {
-      // Проверка доступности gapi
-
       if (typeof gapi !== 'undefined') {
         gapi.load('client', () => {
-          console.log('GAPI loaded');
           loadClient();
+          console.log('API loaded successfully')
+          setIsGapiReady(true);
         });
-      } else {
-        console.error('GAPI not loaded after script load.');
       }
     };
-    script.onerror = () => {
-      console.error('Failed to load Google API script.');
-    };
+
+    script.onerror = () => setError('Failed to load Google API');
     document.body.appendChild(script);
 
-    return () => {
-      document.body.removeChild(script);
-    };
+    return () => document.body.removeChild(script);
   }, []);
 
-  function loadClient() {
-    if (typeof gapi !== 'undefined') { // Дополнительная проверка перед использованием gapi
-      gapi.client.setApiKey("AIzaSyCYIu0bX9jfTkWbPpv1KH37vMCHaasw5-A");
-      gapi.client.load("https://content.googleapis.com/discovery/v1/apis/customsearch/v1/rest")
-        .then(function () {
-          console.log("GAPI client loaded for API");
-        },
-          function (err) {
-            console.error("Error loading GAPI client for API", err);
-          });
-    } else {
-      console.error('GAPI not loaded.');
+  // Загрузка клиента Google API
+  const loadClient = async () => {
+    try {
+      await gapi.client.setApiKey("AIzaSyCYIu0bX9jfTkWbPpv1KH37vMCHaasw5-A");
+      await gapi.client.load("https://content.googleapis.com/discovery/v1/apis/customsearch/v1/rest");
+    } catch (err) {
+      setError('Error loading Google API client');
+      console.error(err);
     }
-  }
+  };
 
-  function execute() {
-    if (typeof gapi !== 'undefined') { // Дополнительная проверка перед использованием gapi
-      gapi.client.search.cse.list({
-        "cx": "b62a35661c1294a02", // Замените "YOUR_CSE_ID" своим Custom Search Engine ID
-        "q": "japan outfit style",
-        "searchType": "image"
-      })
-        .then(function (response) {
-          console.log("Response", response);
-          // Обработлька резутатов поиска
-          if (response.result && response.result.items) {
-            console.log('rendering results...')
-            for (var i = 1; i < response.items.length; i++) {
-              var item = response.items[i];
-              // Make sure HTML in item.htmlTitle is escaped.
-              // console.log('i', i)
-              document.getElementById("content").append(
-                document.createElement("br"),
-                document.createTextNode(item.title),
-                (() => { 
-                  const img = document.createElement("img");
-                  img.src = item.link;
-                  return img;
-                })()
-              );
+  // Выполнение поиска
+  const handleSearch = async () => {
+    console.log('searching...')
+    if (!isGapiReady) return;
+    
+    setLoading(true);
+    setError(null);
 
-            }
-          } else if (response.items == null) {
-            document.getElementById("demo").innerHTML += `<h3> No Results Found </h3>`;
-          } 
-        },
-          function (err) {
-            console.error("Execute error", err);
-          });
-    } else {
-      console.error('GAPI not loaded.');
+    try {
+      const response = await gapi.client.search.cse.list({
+        cx: "b62a35661c1294a02",
+        q: "japan outfit style",
+        searchType: "image"
+      });
+console.log(response)
+      if (response.result.items) {
+        setImages(response.result.items);
+      } else {
+        setImages([]);
+        setError('No results found');
+      }
+    } catch (err) {
+      setError('Error during search');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  }
-
+  };
   return (
     <>
       <header>
@@ -117,9 +101,20 @@ function App() {
       <main>
         <div>
           <button onClick={loadClient}>Load Client</button>
-          <button onClick={execute}>Execute Search</button>
+          <button onClick={handleSearch}>Execute Search</button>
         </div>
-        <div id="content"></div>
+        <div className="image-grid">
+          {images.map((item, index) => (
+            <div key={index} className="image-item">
+              <img 
+                src={item.link} 
+                alt={item.title} 
+                onError={(e) => e.target.style.display = 'none'}
+              />
+              <p>{item.title}</p>
+            </div>
+          ))}
+        </div>
 
         <section className="hero">
           <div className="container hero-content">
