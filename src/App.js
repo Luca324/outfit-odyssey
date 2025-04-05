@@ -64,7 +64,7 @@ function App() {
     try {
       const response = await gapi.client.search.cse.list({
         cx: "b62a35661c1294a02",
-        q: keyWords,
+        q: `outfit ${keyWords}`,
         searchType: "image",
         ...(selectedColor && { imgDominantColor: selectedColor })
 
