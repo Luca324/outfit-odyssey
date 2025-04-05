@@ -6,15 +6,26 @@ import React, { useEffect, useState } from 'react';
 
 function App() {
   const [images, setImages] = useState([]);
+  const [selectedColor, setSelectedColor] = useState('');
+  const [keyWords,setKeyWords] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isGapiReady, setIsGapiReady] = useState(false);
+
+  const handleColorChange = (e) => {
+    setSelectedColor(e.target.value);
+  };
+
+  const handleKeyWordsChange = (e) => {
+    setKeyWords(e.target.value);
+  };
 
   // Инициализация gapi
   useEffect(() => {
     const script = document.createElement('script');
     script.src = "https://apis.google.com/js/api.js";
-    
+
     script.onload = () => {
       if (typeof gapi !== 'undefined') {
         gapi.load('client', () => {
@@ -46,17 +57,19 @@ function App() {
   const handleSearch = async () => {
     console.log('searching...')
     if (!isGapiReady) return;
-    
+
     setLoading(true);
     setError(null);
 
     try {
       const response = await gapi.client.search.cse.list({
         cx: "b62a35661c1294a02",
-        q: "japan outfit style",
-        searchType: "image"
+        q: keyWords,
+        searchType: "image",
+        ...(selectedColor && { imgDominantColor: selectedColor })
+
       });
-console.log(response)
+      console.log(response)
       if (response.result.items) {
         setImages(response.result.items);
       } else {
@@ -100,15 +113,51 @@ console.log(response)
       </header>
       <main>
         <div>
+          <div className="filter-section">
+            <label htmlFor="imgDominantColor">Dominant Color:</label>
+            <select
+              id="imgDominantColor"
+              value={selectedColor}
+              onChange={handleColorChange}
+              className="ng-valid ng-dirty ng-touched"
+            >
+              <option value="">Select dominant color</option>
+              <option value="imgDominantColorUndefined">Undefined</option>
+              <option value="black">Black</option>
+              <option value="blue">Blue</option>
+              <option value="brown">Brown</option>
+              <option value="gray">Gray</option>
+              <option value="green">Green</option>
+              <option value="orange">Orange</option>
+              <option value="pink">Pink</option>
+              <option value="purple">Purple</option>
+              <option value="red">Red</option>
+              <option value="teal">Teal</option>
+              <option value="white">White</option>
+              <option value="yellow">Yellow</option>
+            </select>
+          </div>
+          <div>
+            <input type="text" name="keywords" id="keywords" placeholder="Enter keywords" required
+              value={keyWords}
+              onChange={handleKeyWordsChange} />
+          </div>
           <button onClick={loadClient}>Load Client</button>
-          <button onClick={handleSearch}>Execute Search</button>
+          <button
+            onClick={handleSearch}
+            disabled={!isGapiReady || loading}
+          >
+            {loading ? 'Searching...' : 'Search Images'}
+          </button>
         </div>
+
+        {error && <div className="error">{error}</div>}
         <div className="image-grid">
           {images.map((item, index) => (
             <div key={index} className="image-item">
-              <img 
-                src={item.link} 
-                alt={item.title} 
+              <img
+                src={item.link}
+                alt={item.title}
                 onError={(e) => e.target.style.display = 'none'}
               />
               <p>{item.title}</p>
